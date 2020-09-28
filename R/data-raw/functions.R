@@ -65,12 +65,12 @@ get_ranking_url <- function(url)
 
 #' Get riders profile IDs from *ranking* page
 #' 
-#' \code{get_rider_urls} parses ranking page and returns
+#' \code{get_rider_ids} parses ranking page and returns
 #' vector of rider profiles IDs.
 #' 
 #' @param url Ranking URL (obtained from \code{get_ranking_url})
 #' @return Vector of rider profiles IDs for each rider
-get_rider_urls <- function(url)
+get_rider_ids <- function(url)
 {
   site <- read_html_safe(url)
   current_rankings <-
@@ -97,33 +97,33 @@ get_rider_urls <- function(url)
     filter(str_detect(value, "rider/|team/")) %>%
     separate(value, c("var","url"), "/")
 
-  rider_urls <- url_list %>%
+  rider_ids <- url_list %>%
     filter(var == "rider") %>%
     dplyr::pull(url)
 
-  return(rider_urls)
+  return(rider_ids)
 }
 
 
 #' Get riders profile IDs from *startlist* page
 #' 
-#' \code{get_rider_urls_sl} parses startlist page and returns
+#' \code{get_rider_ids_sl} parses startlist page and returns
 #' vector of rider profiles IDs.
 #' 
 #' @param url Startlist URL, e.g.:
 #'   "https://www.procyclingstats.com/race/tour-de-france/2020/gc/startlist"
 #' @return Vector of rider profiles IDs for each rider
-get_rider_urls_sl <- function(url)
+get_rider_ids_sl <- function(url)
 {
   site <- read_html_safe(url)
 
-  rider_urls <- site %>%
+  rider_ids <- site %>%
     html_nodes(xpath = "//ul[@class='startlist']") %>%
     html_nodes(xpath = "//a[@class='rider blue ']") %>%
     xml_attr("href") %>%
     str_remove("^rider/")
 
-  return(rider_urls)
+  return(rider_ids)
 }
 
 
@@ -332,18 +332,18 @@ parse_rider_results <- function(rider_id, rider_html)
 #' \code{get_pcs_data} scrapes PCS data (rider profiles and results)
 #' for given vector of rider IDs.
 #' 
-#' @param rider_urls Vector of rider's profile IDs
+#' @param rider_ids Vector of rider's profile IDs
 #' @return List of two data frames (\code{profiles} and \code{results}).
 #'   See \code{rider_profiles_men} and \code{rider_records_men} documentation
 #'   for details.
-get_pcs_data <- function(rider_urls)
+get_pcs_data <- function(rider_ids)
 {
   rider_profiles <- NULL
   rider_results <- NULL
-  for (i in 1:length(rider_urls))
+  for (i in 1:length(rider_ids))
   {
     Sys.sleep(1)
-    rider_url <- paste0("https://www.procyclingstats.com/rider/",rider_urls[i])
+    rider_url <- paste0("https://www.procyclingstats.com/rider/",rider_ids[i])
     rider_html <- read_html_safe(rider_url)
     
     profile_out <- parse_rider_profile(rider_html)
