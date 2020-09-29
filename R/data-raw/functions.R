@@ -4,6 +4,7 @@ library(rvest)
 library(xml2)
 library(tidyr)
 library(readr)
+library(httr)
 
 
 #' Get HTML document represented by URL
@@ -220,15 +221,83 @@ parse_rider_profile <- function(rider_html)
 }
 
 
+#' Parse results table
+#'
+#' \code{parse_result_table} parses HTML code of rider's result table.
+#'
+#' @param result_table Result table (xml_node)
+#' @param season Season year
+#' @param rider Rider name
+#' @param rider Rider team
+#' @return Rider results (see \code{rider_records_men} documentation)
+parse_result_table <- function(result_table, season, rider, team)
+{
+  rider_season_table <- result_table %>%
+    .[[1]] %>%
+    html_table() %>%
+    dplyr::rename(gc_result_on_stage = 3,
+                  e1 = 4,
+                  e2 = 9) %>%
+    dplyr::select(-e1,-e2)
+  
+  gt <- rider_season_table %>%
+    filter(case_when(str_detect(Date, "›") ~ T,
+                     Date == "" ~ T,
+                     str_detect(Race, "Stage") ~ T))
+  
+  if (nrow(gt) != 0){
+    group_indices1 <- which(str_detect(gt$Date, "›"))
+    group_indices2 <- c(diff(group_indices1)[1],
+                        diff(group_indices1)[-1],
+                        (nrow(gt) - group_indices1[length(group_indices1)] + 1))
+    group_indices <- group_indices2[!is.na(group_indices2)]
+    
+    
+    gt_init <- gt %>%
+      mutate(id = rep(1:length(group_indices),
+                      times = group_indices)) %>%
+      {. ->> gt_anti_join} %>%
+      group_by(id) %>%
+      mutate(stage = Race,
+             Race = first(Race)) %>%
+      slice(-1) %>%
+      ungroup() %>%
+      dplyr::select(-id)
+    
+    one_day_init <-
+      rider_season_table %>%
+      filter(!Race %in% unique(gt_anti_join$Race)) %>%
+      mutate(stage = "One day")
+    
+    output <- bind_rows(one_day_init,
+                        gt_init) %>%
+      mutate(Date = ifelse(Date != "",paste0(Date,".",season),NA),
+             Date = as.Date(Date, "%d.%m.%Y"),
+             rider = rider,
+             team = team)
+  } else {
+    output <-
+      rider_season_table %>%
+      mutate(Date = ifelse(Date != "",paste0(Date,".",season),NA),
+             Date = as.Date(Date, "%d.%m.%Y"),
+             stage = "One day",
+             rider  = rider,
+             team = team)
+  }
+  return(output)
+}
+
+
 #' Parse rider results from HTML code
 #'
 #' \code{parse_rider_results} parses HTML code of rider's profile page
 #' for race results.
 #'
-#' @param rider_id Rider's profile ID
+#' @param handle Existing curl::handle object
 #' @param rider_html HTML code of rider's profile page
+#' @param usr_agent User-Agent string to be used in curl calls
 #' @return Rider results (see \code{rider_records_men} documentation)
-parse_rider_results <- function(rider_id, rider_html)
+parse_rider_results <- function(handle, rider_html, usr_agent)
 {
   rider_season_output <- NULL
 
@@ -241,80 +310,74 @@ parse_rider_results <- function(rider_id, rider_html)
   rider <- str_squish(rider_metadata[[1]][1])
   team <- str_squish(rider_metadata[[1]][2])
 
-
+  # all seasons
   seasons <- rider_html %>%
-    html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "minh2", " " ))]') %>%
-    html_nodes(".seasonResults") %>%
-    html_text() %>%
-    unique()
-  
-  if(length(seasons) == 0){
+    html_nodes(xpath = "//ul[@class='rdrSeasonNav']/li/@data-season") %>%
+    html_text()
+
+  if(length(seasons) == 0)
+  {
+    message("PCS_Warning: length(seasons) is zero!!") # warning to be removed
     seasons <- rider_html %>%
-      html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "content", " " ))]') %>% html_nodes(".seasonResults") %>%
+      html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "content", " " ))]') %>%
+      html_nodes(".seasonResults") %>%
       html_text() %>%
       unique()
   }
+
+  # last season
+  season_cur <- rider_html %>%
+    html_nodes(xpath = "//ul[@class='rdrSeasonNav']/li[@class='cur']/@data-season") %>%
+    html_text()
+
+  # get *numerical* PCS id
+  rider_id <- rider_html %>%
+    html_nodes(xpath = "//div[@class='content ']/div[@class='page-content']/div/script") %>%
+    .[[1]] %>%
+    html_text() %>%
+    str_match("var id = ([0-9]+)") %>%
+    .[[2]]
+
+  # get results table
+  results_tbl <- rider_html %>%
+    html_nodes(xpath = "//table[@class='rdrResults']")
 
   for (j in 1:length(seasons))
   {
     Sys.sleep(1)
     message(paste(rider, seasons[j]))
-    rider_season_url <- paste0(rider_id, "/", seasons[j])
-    rider_season_site <- read_html_safe(rider_season_url)
-    rider_season_table <- rider_season_site %>%
-      html_nodes("table") %>%
-      .[[1]] %>%
-      html_table() %>%
-      dplyr::rename(gc_result_on_stage = 3,
-                    e1 = 4,
-                    e2 = 9) %>%
-      dplyr::select(-e1,-e2)
 
-    gt <- rider_season_table %>%
-      filter(case_when(str_detect(Date, "›") ~ T,
-                       Date == "" ~ T,
-                       str_detect(Race, "Stage") ~ T))
-
-    if (nrow(gt) != 0){
-      group_indices1 <- which(str_detect(gt$Date, "›"))
-      group_indices2 <- c(diff(group_indices1)[1],
-                          diff(group_indices1)[-1],
-                          (nrow(gt) - group_indices1[length(group_indices1)] + 1))
-      group_indices <- group_indices2[!is.na(group_indices2)]
-
-
-      gt_init <- gt %>%
-        mutate(id = rep(1:length(group_indices),
-                        times = group_indices)) %>%
-        {. ->> gt_anti_join} %>%
-        group_by(id) %>%
-        mutate(stage = Race,
-               Race = first(Race)) %>%
-        slice(-1) %>%
-        ungroup() %>%
-        dplyr::select(-id)
-
-      one_day_init <-
-        rider_season_table %>%
-        filter(!Race %in% unique(gt_anti_join$Race)) %>%
-        mutate(stage = "One day")
-
-      output <- bind_rows(one_day_init,
-                          gt_init) %>%
-        mutate(Date = ifelse(Date != "",paste0(Date,".",seasons[j]),NA),
-               Date = as.Date(Date, "%d.%m.%Y"),
-               rider = rider,
-               team = team)
-    } else {
-      output <-
-        rider_season_table %>%
-        mutate(Date = ifelse(Date != "",paste0(Date,".",seasons[j]),NA),
-               Date = as.Date(Date, "%d.%m.%Y"),
-               stage = "One day",
-               rider  = rider,
-               team = team)
+    if (season_cur == seasons[j])
+    # we already have result table for last season
+    {
+      output <- parse_result_table(results_tbl, seasons[j], rider, team)
+      assign('rider_season_output', rbind(rider_season_output, output))
     }
-    assign('rider_season_output', rbind(rider_season_output, output))
+    else
+    # construct table for the season
+    {
+      # TODO: implement POST_safe to check on HTTP errors
+      resp <- POST(url = 'https://www.procyclingstats.com/rdr/start_results2.php',
+           body = list('id' = rider_id, 'season' = seasons[j]),
+           handle = handle,
+           user_agent(usr_agent))
+      # set of orphaned TR tags (without TBODY parent)
+      res_rows <- content(resp)[[1]]
+      # wrap to TBODY tag
+      raw_tbody <- paste0('<tbody>', res_rows, '</tbody>')
+      # get xml_node of TBODY
+      tbody <- read_html(raw_tbody) %>%
+        html_nodes(xpath = "//body") %>%
+        xml_child("tbody") %>%
+        .[[1]]
+      # find TBODY in original result table
+      target_tbody <- xml_child(results_tbl[[1]], "tbody")
+      # replace with new TBODY
+      xml_replace(target_tbody, tbody)
+
+      output <- parse_result_table(results_tbl, seasons[j], rider, team)
+      assign('rider_season_output', rbind(rider_season_output, output))
+    }
   }
 
   rider_records <- tibble(rider_season_output) %>%
@@ -338,20 +401,30 @@ parse_rider_results <- function(rider_id, rider_html)
 #'   for details.
 get_pcs_data <- function(rider_ids)
 {
+  usr_agent <- 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/83.0.4103.61 Chrome/83.0.4103.61 Safari/537.36'
   rider_profiles <- NULL
   rider_results <- NULL
+
   for (i in 1:length(rider_ids))
   {
     Sys.sleep(1)
     rider_url <- paste0("https://www.procyclingstats.com/rider/",rider_ids[i])
-    rider_html <- read_html_safe(rider_url)
-    
+    # get curl handle
+    hndl <- handle(rider_url)
+
+    # TODO: implement GET_safe to check on HTTP errors
+    rider_html <- GET(rider_url, handle = hndl, user_agent(usr_agent)) %>%
+      content()
+
     profile_out <- parse_rider_profile(rider_html)
     message(profile_out["rider"])
     assign('rider_profiles', rbind(profile_out, rider_profiles))
-    
-    results_out <- parse_rider_results(rider_url, rider_html)
+
+    results_out <- parse_rider_results(hndl, rider_html, usr_agent)
     assign('rider_results', rbind(results_out, rider_results))
+    
+    # reset curl handle
+    handle_reset(rider_url)
   }
   return(list("profiles" = rider_profiles,
               "results" = rider_results))
