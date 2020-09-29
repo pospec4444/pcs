@@ -239,20 +239,20 @@ parse_result_table <- function(result_table, season, rider, team)
                   e1 = 4,
                   e2 = 9) %>%
     dplyr::select(-e1,-e2)
-  
+
   gt <- rider_season_table %>%
     filter(case_when(str_detect(Date, "›") ~ T,
                      Date == "" ~ T,
                      str_detect(Race, "Stage") ~ T))
-  
+
   if (nrow(gt) != 0){
     group_indices1 <- which(str_detect(gt$Date, "›"))
     group_indices2 <- c(diff(group_indices1)[1],
                         diff(group_indices1)[-1],
                         (nrow(gt) - group_indices1[length(group_indices1)] + 1))
     group_indices <- group_indices2[!is.na(group_indices2)]
-    
-    
+
+
     gt_init <- gt %>%
       mutate(id = rep(1:length(group_indices),
                       times = group_indices)) %>%
@@ -263,12 +263,12 @@ parse_result_table <- function(result_table, season, rider, team)
       slice(-1) %>%
       ungroup() %>%
       dplyr::select(-id)
-    
+
     one_day_init <-
       rider_season_table %>%
       filter(!Race %in% unique(gt_anti_join$Race)) %>%
       mutate(stage = "One day")
-    
+
     output <- bind_rows(one_day_init,
                         gt_init) %>%
       mutate(Date = ifelse(Date != "",paste0(Date,".",season),NA),
@@ -422,7 +422,7 @@ get_pcs_data <- function(rider_ids)
 
     results_out <- parse_rider_results(hndl, rider_html, usr_agent)
     assign('rider_results', rbind(results_out, rider_results))
-    
+
     # reset curl handle
     handle_reset(rider_url)
   }

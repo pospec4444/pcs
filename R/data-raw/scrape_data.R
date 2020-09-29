@@ -11,9 +11,9 @@ source("R/data-raw/functions.R")
 # Get URL of latest rankings
 rankings_url <- get_ranking_url("https://www.procyclingstats.com/rankings.php/me?cat=me")
 # Get URL of rider profiles
-rider_urls <- get_rider_urls(rankings_url)
+rider_ids <- get_rider_ids(rankings_url)
 # Get profiles and results for each rider
-pcs_data <- get_pcs_data(rider_urls)
+pcs_data <- get_pcs_data(rider_ids)
 
 # Use distinct profiles only
 rider_profiles_men <-
@@ -31,8 +31,8 @@ rider_records_men <-
 # Same for women elite
 #
 rankings_url <- get_ranking_url("https://www.procyclingstats.com/rankings.php/we?cat=we")
-rider_urls <- get_rider_urls(rankings_url)
-pcs_data <- get_pcs_data(rider_urls)
+rider_ids <- get_rider_urls(rankings_url)
+pcs_data <- get_pcs_data(rider_ids)
 
 rider_profiles_women <-
   pcs::rider_profiles_women %>%
