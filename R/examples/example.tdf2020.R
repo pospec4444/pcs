@@ -39,6 +39,9 @@ library(plotly)
 gc <- rider_records_tdf2020 %>%
   subset(stage == "General classification")
 
+# top 3 riders in each team
+top3_by_team <- gc %>% group_by(team) %>% slice_min(order_by = result, n = 3)
+
 # take stages 1-20
 stages20 <- rider_records_tdf2020 %>%
   subset(date <= '2020-09-19')
@@ -64,6 +67,9 @@ data <- full_join(stages20, stage21) %>%
   mutate(stage = str_replace(stage,
                              fixed("13 - Châtel-Guyon › Pas de Peyrol (Le Puy Mary)"),
                              "13 - Châtel-Guyon › Pas de Peyrol"))
+
+# use only top 3 riders from each team
+# data <- semi_join(data, top3_by_team, by = "rider")
 
 chart <- ggplot(
   data,
