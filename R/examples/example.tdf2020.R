@@ -17,6 +17,10 @@ if (! exists("rider_records_tdf2020"))
   rider_profiles_tdf2020 <- pcs_data$profiles
   rider_records_tdf2020 <- pcs_data$results %>%
     subset(race == 'Tour de France (2.UWT)')
+
+  usethis::use_data(rider_profiles_tdf2020,
+                    rider_records_tdf2020,
+                    overwrite = TRUE)
 }
 
 ################################################################################
@@ -36,11 +40,11 @@ score_uci <- rider_records_tdf2020 %>%
 
 library(plotly)
 # GC results
-gc <- rider_records_tdf2020 %>%
+final_gc <- rider_records_tdf2020 %>%
   subset(stage == "General classification")
 
 # top 3 riders in each team
-top3_by_team <- gc %>% group_by(team) %>% slice_min(order_by = result, n = 3)
+top3_by_team <-  final_gc %>% group_by(team) %>% slice_min(order_by = result, n = 3)
 
 # take stages 1-20
 stages20 <- rider_records_tdf2020 %>%
@@ -49,13 +53,15 @@ stages20 <- rider_records_tdf2020 %>%
 # stage 21 has empty column `gc_result_on_stage`
 stage21 <- rider_records_tdf2020 %>%
   subset(date == '2020-09-20') %>%
-  mutate(gc_result_on_stage = gc$result) # use result from `gc`
+  mutate(gc_result_on_stage =  final_gc$result) # use result from ` final_gc`
 
 # combine both data frames
 data <- full_join(stages20, stage21) %>%
-  select(rider, date, gc_result_on_stage, team, stage) %>%
-  # include final GC
-  merge(., select(gc, rider, result), by = "rider", all.x = TRUE) %>%
+  # about to abuse `result` column...
+  mutate(result_on_stage = result) %>%
+  select(rider, date, gc_result_on_stage, result_on_stage, team, stage) %>%
+  # include final GC (...and abuse result column!!)
+  merge(., select( final_gc, rider, result), by = "rider", all.x = TRUE) %>%
   rename(gc_result = result) %>%
   # rename stages to alphabetical order (so aes works)
   mutate(stage = sub('^Stage (\\d) ', '0\\1 ', stage)) %>%
@@ -80,6 +86,7 @@ chart <- ggplot(
     colour = team,
     # customize tooltip
     text = paste(rider, team,
+                 paste("Stage:", result_on_stage),
                  paste("GC:", gc_result_on_stage),
                  paste("Final GC:", gc_result),
                  sep = '\n')
