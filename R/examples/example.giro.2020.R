@@ -1,22 +1,26 @@
 library(dplyr)
 library(here)
 library(stringr)
+library(ggplot2)
 
 load(here('data/examples/rider_records_giro2020.rda'))
+load(here('data/examples/rider_profiles_giro2020.rda'))
 
-if (! exists("rider_records_giro2020"))
+# Prepare the data if not loaded
+if (! (exists("rider_records_giro2020") && exists("rider_profiles_giro2020")))
 {
+  Sys.setlocale("LC_TIME", "en_US.UTF-8")
+
   source("R/data-raw/functions.R")
   # Get rider IDs from Giro 2020 startlist
   rider_ids <-
     get_rider_urls_sl('https://www.procyclingstats.com/race/giro-d-italia/2020/gc/startlist')
 
-  # Get profiles and results for each rider
-  pcs_data <- get_pcs_data(rider_ids, c(2020))
+  # Get profiles and results for each starting rider
+  pcs_data <- get_pcs_data(rider_ids, seasons =  c(2019, 2020))
 
   rider_profiles_giro2020 <- pcs_data$profiles
-  rider_records_giro2020 <- pcs_data$results %>%
-    subset(race == "Giro d'Italia (2.UWT)")
+  rider_records_giro2020 <- pcs_data$results
 
   usethis::use_data(rider_profiles_giro2020,
                     rider_records_giro2020,
@@ -24,13 +28,44 @@ if (! exists("rider_records_giro2020"))
 }
 ################################################################################
 
+
 #
 # Example 01:
-# UCI points scored by each rider
-score_uci <- rider_records_giro2020 %>%
+# UCI points scored by each rider on start since Giro 2019 started
+# 
+uci_points_on_start <- rider_records_giro2020 %>%
+  subset(date < '2020-10-03') %>%
+  subset(date >= '2019-05-11') %>%
   group_by(rider) %>%
-  summarise(pointsuci = sum(pointsuci, na.rm = TRUE)) %>%
-  arrange(desc(pointsuci))
+  summarise(pointsuci = sum(pointsuci, na.rm = TRUE))
+
+riders_age_points <- rider_profiles_giro2020 %>%
+  mutate(age = as.double(difftime('2020-10-03', dob, units = 'weeks') / 52.25)) %>%
+  left_join(., uci_points_on_start, by = "rider") %>%
+  arrange(desc(pointsuci)) %>%
+  head(n = 20)
+
+riders_age_points %>%
+  ggplot() + aes(x = age, y = pointsuci, label = rider) +
+  ylim(NA, 2200) +
+  geom_text(check_overlap = TRUE, size = 3, angle = 90,
+            vjust = "top", hjust = "left", nudge_x = 0.1) +
+  geom_point(shape = 1) +
+  labs(y = "UCI points",
+       x = "Age")
+
+
+
+
+
+
+
+
+
+rider_records_giro2020 <- rider_records_giro2020 %>%
+  subset(race == "Giro d'Italia (2.UWT)")
+
+
 
 #
 # Example 02:
