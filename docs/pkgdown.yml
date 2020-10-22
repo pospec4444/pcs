@@ -2,6 +2,7 @@ pandoc: 2.7.3
 pkgdown: 1.6.1
 pkgdown_sha: ~
 articles:
+  example-top-riders: example-top-riders.html
   pcs-usage: pcs-usage.html
-last_built: 2020-10-20T13:43Z
+last_built: 2020-10-22T17:01Z
 
