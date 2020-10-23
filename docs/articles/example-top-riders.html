@@ -78,7 +78,7 @@
       <h1 data-toc-skip>Example: Top riders in stage race</h1>
                         <h4 class="author">Libor Pospíchal</h4>
             
-            <h4 class="date">Latest version: 2020-10-22</h4>
+            <h4 class="date">Latest version: 2020-10-23</h4>
       
       
       <div class="hidden name"><code>example-top-riders.Rmd</code></div>
@@ -102,11 +102,11 @@
 <div id="top-20-riders-starting-giro-ditalia-2020-by-age" class="section level2">
 <h2 class="hasAnchor">
 <a href="#top-20-riders-starting-giro-ditalia-2020-by-age" class="anchor"></a>Top 20 riders starting Giro d’Italia 2020 by age</h2>
-<p>Pick top 20 riders who collected most UCI points since the start of previous edition of the race. Calculate riders’ age on start of Giro 2020.</p>
+<p>Pick top 20 riders who collected most UCI points since the start of <em>previous</em> edition of the race. Calculate riders’ age on start of Giro 2020.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit">
 <span class="va">uci_points_on_start</span> <span class="op">&lt;-</span> <span class="va">rider_records_giro2020</span> <span class="op">%&gt;%</span>
-  <span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span><span class="va">date</span> <span class="op">&lt;</span> <span class="st">'2020-10-03'</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span><span class="va">date</span> <span class="op">&gt;=</span> <span class="st">'2019-05-11'</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span><span class="va">date</span> <span class="op">&lt;</span> <span class="st">'2020-10-03'</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html">group_by</a></span><span class="op">(</span><span class="va">rider</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html">summarise</a></span><span class="op">(</span>pointsuci <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">pointsuci</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>
 
@@ -123,8 +123,8 @@
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_text.html">geom_text</a></span><span class="op">(</span>check_overlap <span class="op">=</span> <span class="cn">TRUE</span>, size <span class="op">=</span> <span class="fl">3</span>, angle <span class="op">=</span> <span class="fl">90</span>,
             vjust <span class="op">=</span> <span class="st">"top"</span>, hjust <span class="op">=</span> <span class="st">"left"</span>, nudge_x <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html">geom_point</a></span><span class="op">(</span>shape <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html">labs</a></span><span class="op">(</span>y <span class="op">=</span> <span class="st">"UCI points"</span>,
-       x <span class="op">=</span> <span class="st">"Age"</span><span class="op">)</span></pre></div>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Age"</span>,
+       y <span class="op">=</span> <span class="st">"UCI points"</span><span class="op">)</span></pre></div>
 <p><img src="example-top-riders_files/figure-html/unnamed-chunk-3-1.png" width="700"></p>
 </div>
   </div>
@@ -140,7 +140,7 @@
 
 
       <footer><div class="copyright">
-  <p>Developed by Sean Hardison.</p>
+  <p>Developed by Sean Hardison, Libor Pospíchal.</p>
 </div>
 
 <div class="pkgdown">
