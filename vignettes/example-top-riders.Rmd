@@ -33,12 +33,12 @@ load(here('data/examples/rider_profiles_giro2020.rda'))
 
 ## Top 20 riders starting Giro d'Italia 2020 by age
 
-Pick top 20 riders who collected most UCI points since the start of previous edition of the race. Calculate riders' age on start of Giro 2020.
+Pick top 20 riders who collected most UCI points since the start of *previous* edition of the race. Calculate riders' age on start of Giro 2020.
 
 ```{r, message=F, warning=F}
 uci_points_on_start <- rider_records_giro2020 %>%
-  subset(date < '2020-10-03') %>%
   subset(date >= '2019-05-11') %>%
+  subset(date < '2020-10-03') %>%
   group_by(rider) %>%
   summarise(pointsuci = sum(pointsuci, na.rm = TRUE))
 
@@ -58,6 +58,6 @@ riders_age_points %>%
   geom_text(check_overlap = TRUE, size = 3, angle = 90,
             vjust = "top", hjust = "left", nudge_x = 0.1) +
   geom_point(shape = 1) +
-  labs(y = "UCI points",
-       x = "Age")
+  labs(x = "Age",
+       y = "UCI points")
 ```
